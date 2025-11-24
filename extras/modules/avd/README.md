@@ -1,39 +1,51 @@
-# Azure Virtual Desktop (AVD) QuickStart
+# Azure Virtual Desktop Module (avd)
 
-This Terraform module deploys an Azure Virtual Desktop (AVD) environment based on the Azure QuickStart template.
+## Contents
+
+* [Overview](#overview)
+* [Documentation](#documentation)
 
 ## Overview
 
-This module creates a complete AVD environment including:
+This module deploys Azure Virtual Desktop (AVD) with both personal desktop and RemoteApp configurations. It creates two separate host pools with dedicated session hosts, workspaces, and application groups. The personal desktop host pool provides full Windows desktop access, while the RemoteApp host pool streams individual applications like Microsoft Edge.
 
-- AVD host pool (pooled configuration)
-- Desktop application group
-- AVD workspace
-- Windows 11 session host VM with:
-  - Azure AD join
-  - Trusted Launch security
-  - Guest attestation
-  - AVD agent via DSC extension
-- Role assignments for user access
+## Documentation
 
-## Prerequisites
+Additional information about this module.
 
-This module requires:
-- An existing resource group
-- An existing subnet (typically from `vnet-app` module)
-- Azure AD user/group object IDs for role assignments
+* [Dependencies](#dependencies)
+* [Module Structure](#module-structure)
+* [Usage](#usage)
+* [Input Variables](#input-variables)
+* [Module Resources](#module-resources)
+* [Output Variables](#output-variables)
+* [Configuration Details](#configuration-details)
+* [Limitations](#limitations)
 
-## Resources Created
+### Dependencies
 
-- **azurerm_virtual_desktop_host_pool**: AVD host pool with pooled desktop configuration
-- **azurerm_virtual_desktop_application_group**: Desktop application group
-- **azurerm_virtual_desktop_workspace**: AVD workspace
-- **azurerm_network_interface**: Network interface with accelerated networking for session host
-- **azurerm_windows_virtual_machine**: Windows 11 session host with Office 365
-- **azurerm_virtual_machine_extension**: DSC, AAD Login, and Guest Attestation extensions
-- **azurerm_role_assignment**: Desktop Virtualization User and VM User Login roles
+This module depends upon resources provisioned in the following modules:
 
-## Usage
+* Root (resource group)
+* vnet-shared or vnet-app (virtual networks / subnets)
+
+Additional requirements:
+
+* Azure AD user/group object IDs for role assignments
+
+### Module Structure
+
+```plaintext
+├── compute.tf      # Virtual machines and extensions for both host pools
+├── locals.tf       # Local values (role IDs, RDP properties)
+├── main.tf         # AVD control plane resources (workspaces, host pools, app groups)
+├── network.tf      # Network interfaces for session hosts
+├── outputs.tf      # Module outputs
+├── terraform.tf    # Terraform configuration block
+└── variables.tf    # Input variables
+```
+
+### Usage
 
 ```hcl
 module "avd" {
@@ -47,15 +59,16 @@ module "avd" {
   # Networking (from existing infrastructure)
   subnet_id = module.vnet_app.subnet_ids["snet-app-01"]
   
-  # Virtual Machine
-  vm_name        = "sessionhost1"
-  vm_size        = "Standard_D4ds_v4"
-  admin_username = "azureuser"
-  admin_password = "P@ssw0rd1234!"
-  vm_image_sku   = "win11-23h2-avd-m365"
+  # Virtual Machines
+  vm_name_personal   = "avdpersonal"
+  vm_name_remoteapp  = "avdremoteapp"
+  vm_size            = "Standard_D4ds_v4"
+  admin_username     = "azureuser"
+  admin_password     = "P@ssw0rd1234!"
+  vm_image_sku       = "win11-24h2-avd-m365"
   
   # AVD Configuration
-  configuration_zip_url         = "https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/Configuration_1.0.02507.289.zip"
+  configuration_zip_url         = "https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/Configuration_1.0.02790.438.zip"
   security_principal_object_ids = ["00000000-0000-0000-0000-000000000000"]
   
   # Naming
@@ -63,101 +76,162 @@ module "avd" {
   
   # Tags
   tags = {
-    Environment = "dev"
-    Workload    = "avd"
+    project     = "avd"
+    environment = "dev"
   }
 }
 ```
 
-## Variables
+### Input Variables
 
-| Name | Type | Description | Default |
-|------|------|-------------|---------|
-| `admin_password` | string | Administrator password for session host VM | Required |
-| `admin_username` | string | Administrator username for session host VM | Required |
-| `configuration_zip_url` | string | URL to DSC configuration ZIP file | Microsoft Gallery URL |
-| `location` | string | Azure region where resources will be created | Required |
-| `resource_group_id` | string | Resource ID of the existing resource group | Required |
-| `resource_group_name` | string | Name of the existing resource group | Required |
-| `security_principal_object_ids` | list(string) | Azure AD object IDs for role assignments | Required |
-| `subnet_id` | string | Resource ID of existing subnet for session host | Required |
-| `tags` | map(string) | Tags to apply to all resources | `{}` |
-| `unique_seed` | string | Seed value for Azure naming module | Required |
-| `vm_image_sku` | string | Marketplace image SKU for session host | `win11-23h2-avd-m365` |
-| `vm_name` | string | Name of the session host virtual machine | `sessionhost1` |
-| `vm_size` | string | Azure VM size for session host | `Standard_D4ds_v4` |
+Variable | Default | Description
+--- | --- | ---
+admin_password | | Administrator password for session host VMs (sensitive).
+admin_username | | Administrator username for session host VMs.
+configuration_zip_url | Microsoft Gallery URL | URL to DSC configuration ZIP file for AVD agent installation.
+location | | Azure region where resources will be created.
+resource_group_id | | Resource ID of the existing resource group.
+resource_group_name | | Name of the existing resource group.
+security_principal_object_ids | | Azure AD object IDs for role assignments.
+subnet_id | | Resource ID of existing subnet for session hosts.
+tags | | Map of resource tags.
+unique_seed | | Seed value for Azure naming module.
+vm_image_sku | win11-24h2-avd-m365 | Marketplace image SKU for session host VMs.
+vm_name_personal | sessionhost1 | Name of the personal desktop session host virtual machine.
+vm_name_remoteapp | sessionhost2 | Name of the RemoteApp session host virtual machine.
+vm_size | Standard_D4ds_v4 | Azure VM size for session host VMs.
 
-## Outputs
+### Module Resources
 
-| Name | Description |
-|------|-------------|
-| `resource_ids` | Map of AVD resource IDs (avd_host_pool, avd_application_group, avd_workspace, virtual_machine_session_host) |
-| `resource_names` | Map of AVD resource names (avd_host_pool, avd_application_group, avd_workspace, virtual_machine_session_host) |
+Address | Name | Notes
+--- | --- | ---
+azurerm_virtual_desktop_workspace.personal | personal | Personal desktop workspace.
+azurerm_virtual_desktop_host_pool.personal | personal | Pooled host pool for desktop (max 2 sessions).
+azurerm_virtual_desktop_application_group.personal | personal | Desktop application group.
+azurerm_virtual_desktop_workspace_application_group_association.personal | | Links personal workspace to application group.
+azurerm_role_assignment.personal | | Desktop Virtualization User role on personal app group.
+azurerm_virtual_desktop_host_pool_registration_info.personal | | Registration token for personal host pool.
+azurerm_virtual_desktop_workspace.remoteapp | remoteapp | RemoteApp workspace.
+azurerm_virtual_desktop_host_pool.remoteapp | remoteapp | Pooled host pool for RemoteApp (max 10 sessions).
+azurerm_virtual_desktop_application_group.remoteapp | remoteapp | RemoteApp application group.
+azurerm_virtual_desktop_application.edge | MicrosoftEdge | Microsoft Edge published application.
+azurerm_virtual_desktop_workspace_application_group_association.remoteapp | | Links RemoteApp workspace to application group.
+azurerm_role_assignment.remoteapp | | Desktop Virtualization User role on RemoteApp app group.
+azurerm_virtual_desktop_host_pool_registration_info.remoteapp | | Registration token for RemoteApp host pool.
+azurerm_windows_virtual_machine.personal | personal | Windows 11 multi-session session host for personal desktop.
+azurerm_windows_virtual_machine.remoteapp | remoteapp | Windows 11 multi-session session host for RemoteApp.
+azurerm_network_interface.personal | personal | Network interface with accelerated networking for personal VM.
+azurerm_network_interface.remoteapp | remoteapp | Network interface with accelerated networking for RemoteApp VM.
+azurerm_virtual_machine_extension.guest_attestation_personal | GuestAttestation | Guest attestation for personal VM.
+azurerm_virtual_machine_extension.dsc_personal | DSC | Joins personal VM to host pool.
+azurerm_virtual_machine_extension.aad_login_personal | AADLoginForWindows | Azure AD login for personal VM.
+azurerm_virtual_machine_extension.guest_attestation_remoteapp | GuestAttestation | Guest attestation for RemoteApp VM.
+azurerm_virtual_machine_extension.dsc_remoteapp | DSC | Joins RemoteApp VM to host pool.
+azurerm_virtual_machine_extension.aad_login_remoteapp | AADLoginForWindows | Azure AD login for RemoteApp VM.
+azurerm_role_assignment.vm_users | | VM User Login role on resource group.
+time_offset.this | | 2-hour expiration for registration tokens.
+module.naming | | Azure naming module instance for consistent resource naming.
 
-## Configuration Details
+### Output Variables
 
-### Host Pool Configuration
+Name | Description
+--- | ---
+resource_ids | Map of all AVD resource IDs including personal and RemoteApp host pools, application groups, workspaces, and both session host VMs.
+resource_names | Map of all AVD resource names including personal and RemoteApp host pools, application groups, workspaces, and both session host VMs.
 
-- **Type**: Pooled
-- **Load Balancing**: BreadthFirst
-- **Maximum Sessions**: 2 per host
-- **Preferred App Group Type**: Desktop
-- **RDP Properties**: Full redirection enabled (drives, clipboard, printers, devices, audio, video, smart cards, USB, webcams, multi-monitor)
+#### Output Structure
 
-### Session Host VM
+```hcl
+resource_ids = {
+  avd_application_group_personal         = "..."
+  avd_application_group_remoteapp        = "..."
+  avd_host_pool_personal                 = "..."
+  avd_host_pool_remoteapp                = "..."
+  avd_workspace_personal                 = "..."
+  avd_workspace_remoteapp                = "..."
+  virtual_machine_session_host_personal  = "..."
+  virtual_machine_session_host_remoteapp = "..."
+}
+```
 
-- **Image**: Windows 11 with Microsoft 365 Apps (configurable via `vm_image_sku`)
-- **Security**: Trusted Launch with Secure Boot and vTPM enabled
-- **Storage**: Premium SSD managed disk
-- **Networking**: Accelerated networking enabled
-- **Authentication**: Azure AD joined with AAD login extension
-- **License**: Windows Client license type
+### Configuration Details
 
-### Role Assignments
+#### Personal Desktop Host Pool
 
-Two role assignments are created for each security principal:
+* **Type**: Pooled
+* **Load Balancing**: BreadthFirst
+* **Maximum Sessions**: 2 per host
+* **Preferred App Group Type**: Desktop
+* **RDP Properties**: Full redirection enabled (drives, clipboard, printers, devices, audio, video, smart cards, USB, webcams, multi-monitor)
 
-1. **Desktop Virtualization User** (on Application Group): Allows users to access the AVD desktop
-2. **Virtual Machine User Login** (on Resource Group): Allows Azure AD authentication to the session host
+#### RemoteApp Host Pool
 
-## Notes
+* **Type**: Pooled
+* **Load Balancing**: BreadthFirst
+* **Maximum Sessions**: 10 per host
+* **Preferred App Group Type**: RailApplications
+* **RDP Properties**: Full redirection enabled (drives, clipboard, printers, devices, audio, video, smart cards, USB, webcams, multi-monitor)
+* **Published Applications**: Microsoft Edge (additional applications can be added)
 
-- The host pool registration token is configured with a 2-hour expiration
-- The DSC extension automatically joins the session host to the host pool
-- All AVD resources are named using the Azure naming module with the provided `unique_seed`
-- The `admin_password` must meet Azure password complexity requirements (12-123 characters)
-- The `admin_username` is limited to 20 characters and cannot be a reserved name (e.g., admin, administrator)
-- Ensure the `security_principal_object_ids` correspond to valid Azure AD users/groups
+#### Session Host VMs
 
-## Requirements
+* **Image**: Windows 11 multi-session with Microsoft 365 Apps (configurable via `vm_image_sku`)
+* **Security**: Trusted Launch with Secure Boot and vTPM enabled
+* **Storage**: Premium SSD managed disk
+* **Networking**: Accelerated networking enabled
+* **Authentication**: Azure AD joined with AAD login extension
+* **License**: Windows Client license type
 
-| Name | Version |
-|------|---------|
-| terraform | >= 1.9 |
-| azurerm | ~> 4.0 |
-| time | ~> 0.12 |
+#### Role Assignments
 
-## Providers
+Role assignments are created for each security principal:
 
-| Name | Version |
-|------|---------|
-| azurerm | ~> 4.0 |
-| time | ~> 0.12 |
+* **Desktop Virtualization User** (on both Application Groups): Allows users to access AVD desktops and RemoteApps
+* **Virtual Machine User Login** (on Resource Group): Allows Azure AD authentication to all session hosts
 
-## Modules
+#### Notes
 
-| Name | Source | Version |
-|------|--------|---------|
-| naming | Azure/naming/azurerm | ~> 0.4.2 |
+* The module creates two separate host pools: one for personal desktops and one for RemoteApp streaming
+* Host pool registration tokens are configured with a 2-hour expiration
+* The DSC extension automatically joins each session host to its respective host pool
+* All AVD resources are named using the Azure naming module with the provided `unique_seed`
+* The `admin_password` must meet Azure password complexity requirements (12-123 characters)
+* The `admin_username` is limited to 20 characters and cannot be a reserved name (e.g., admin, administrator)
+* Ensure the `security_principal_object_ids` correspond to valid Azure AD users/groups
+* Microsoft Edge is published by default in the RemoteApp group; additional applications can be added via `azurerm_virtual_desktop_application` resources
+* Both session hosts use the same subnet for simplified networking
 
-## Limitations
+#### Requirements
 
-- This module creates a single session host (suitable for testing/quickstart scenarios)
-- For production deployments, consider scaling to multiple session hosts
-- The module requires existing networking infrastructure (resource group and subnet)
+Name | Version
+--- | ---
+terraform | >= 1.9
+azurerm | ~> 4.0
+time | ~> 0.12
 
-## Related Documentation
+#### Providers
 
-- [Azure Virtual Desktop Documentation](https://docs.microsoft.com/azure/virtual-desktop/)
-- [Trusted Launch for Azure VMs](https://docs.microsoft.com/azure/virtual-machines/trusted-launch)
-- [Azure AD joined VMs](https://docs.microsoft.com/azure/active-directory/devices/concept-azure-ad-join)
+Name | Version
+--- | ---
+azurerm | ~> 4.0
+time | ~> 0.12
+
+#### Modules
+
+Name | Source | Version
+--- | --- | ---
+naming | Azure/naming/azurerm | ~> 0.4.2
+
+### Limitations
+
+* This module creates one session host per host pool (two total VMs - suitable for testing/POC scenarios).
+* For production deployments, consider scaling to multiple session hosts per pool.
+* The module requires existing networking infrastructure (resource group and subnet).
+* Both host pools share the same security principal assignments.
+* Published applications in RemoteApp are currently hardcoded; consider parameterizing for flexibility.
+
+### Related Documentation
+
+* [Azure Virtual Desktop Documentation](https://docs.microsoft.com/azure/virtual-desktop/)
+* [Trusted Launch for Azure VMs](https://docs.microsoft.com/azure/virtual-machines/trusted-launch)
+* [Azure AD joined VMs](https://docs.microsoft.com/azure/active-directory/devices/concept-azure-ad-join)

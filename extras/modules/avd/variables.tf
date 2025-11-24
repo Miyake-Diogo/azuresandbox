@@ -118,13 +118,24 @@ variable "vm_image_sku" {
   }
 }
 
-variable "vm_name" {
+variable "vm_name_personal" {
   type        = string
-  description = "Name of the session host virtual machine"
+  description = "Name of the personal desktop session host virtual machine"
   default     = "sessionhost1"
 
   validation {
-    condition     = can(regex("^[a-zA-Z0-9-]{1,15}$", var.vm_name))
+    condition     = can(regex("^[a-zA-Z0-9-]{1,15}$", var.vm_name_personal))
+    error_message = "Must be 1-15 characters and contain only alphanumeric characters and hyphens."
+  }
+}
+
+variable "vm_name_remoteapp" {
+  type        = string
+  description = "Name of the RemoteApp session host virtual machine"
+  default     = "sessionhost2"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9-]{1,15}$", var.vm_name_remoteapp))
     error_message = "Must be 1-15 characters and contain only alphanumeric characters and hyphens."
   }
 }

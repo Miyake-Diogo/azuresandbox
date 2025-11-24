@@ -60,6 +60,67 @@ resource "azurerm_virtual_desktop_host_pool_registration_info" "personal" {
 }
 #endregion
 
+#region remoteapp
+resource "azurerm_virtual_desktop_workspace" "remoteapp" {
+  name                = "${module.naming.virtual_desktop_workspace.name_unique}-remoteapp"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  friendly_name       = "RemoteApp Workspace"
+}
+
+resource "azurerm_virtual_desktop_application_group" "remoteapp" {
+  name                = "${module.naming.virtual_desktop_application_group.name_unique}-remoteapp"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  type                = "RemoteApp"
+  host_pool_id        = azurerm_virtual_desktop_host_pool.remoteapp.id
+  friendly_name       = "RemoteApp Group"
+  description         = "RemoteApp Application Group"
+}
+
+resource "azurerm_virtual_desktop_workspace_application_group_association" "remoteapp" {
+  workspace_id         = azurerm_virtual_desktop_workspace.remoteapp.id
+  application_group_id = azurerm_virtual_desktop_application_group.remoteapp.id
+}
+
+resource "azurerm_role_assignment" "remoteapp" {
+  for_each             = toset(var.security_principal_object_ids)
+  scope                = azurerm_virtual_desktop_application_group.remoteapp.id
+  role_definition_id   = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/${local.desktop_virtualization_user_role}"
+  principal_id         = each.value
+}
+
+resource "azurerm_virtual_desktop_host_pool" "remoteapp" {
+  name                     = "${module.naming.virtual_desktop_host_pool.name_unique}-remoteapp"
+  location                 = var.location
+  resource_group_name      = var.resource_group_name
+  type                     = "Pooled"
+  load_balancer_type       = "BreadthFirst"
+  maximum_sessions_allowed = 10
+  preferred_app_group_type = "RailApplications"
+  validate_environment     = false
+  custom_rdp_properties    = local.rdp_properties
+  start_vm_on_connect      = false
+}
+
+resource "azurerm_virtual_desktop_host_pool_registration_info" "remoteapp" {
+  hostpool_id     = azurerm_virtual_desktop_host_pool.remoteapp.id
+  expiration_date = time_offset.this.rfc3339 # Registration token with 2 hour expiration
+}
+
+resource "azurerm_virtual_desktop_application" "edge" {
+  name                         = "MicrosoftEdge"
+  application_group_id         = azurerm_virtual_desktop_application_group.remoteapp.id
+  friendly_name                = "Microsoft Edge"
+  description                  = "Microsoft Edge Browser"
+  path                         = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+  command_line_argument_policy = "DoNotAllow"
+  show_in_portal               = true
+  icon_path                    = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+  icon_index                   = 0
+}
+#endregion
+
 #region utilities
 resource "time_offset" "this" {
   offset_hours = 2
