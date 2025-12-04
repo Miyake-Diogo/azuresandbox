@@ -17,7 +17,10 @@ This module deploys Azure Virtual Desktop (AVD) with both personal desktop and R
 
 ## Smoke Testing
 
-TBD
+* From the client environment, launch the [Windows App](https://apps.microsoft.com/detail/9N1F85V9T8BN?hl=en-us&gl=US&ocid=pdpshare)
+* Sign in as the Azure CLI signed in user
+* Connect to the sample desktop, then disconnect
+* Connect to the sample Microsoft Edge RemoteApp, then disconnect
 
 ## Documentation
 
