@@ -35,6 +35,12 @@ variable "enable_module_ai_foundry" {
   default     = false
 }
 
+variable "enable_module_avd" {
+  type        = bool
+  description = "Set to true to enable the Azure Virtual Desktop (AVD) module, false to skip it."
+  default     = false
+}
+
 variable "enable_module_mssql" {
   type        = bool
   description = "Set to true to enable the Azure SQL Database (mssql) module, false to skip it."

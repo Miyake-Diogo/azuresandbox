@@ -252,4 +252,22 @@ module "petstore" {
 
   depends_on = [module.vnet_app[0].azure_files_config_vm_extension_id] # Ensure that Azure Files is configured
 }
+
+module "avd" {
+  source = "./extras/modules/avd"
+
+  count = var.enable_module_avd ? 1 : 0
+
+  admin_password                = module.vnet_shared.admin_password
+  admin_username                = module.vnet_shared.admin_username
+  location                      = azurerm_resource_group.this.location
+  resource_group_id             = azurerm_resource_group.this.id
+  resource_group_name           = azurerm_resource_group.this.name
+  security_principal_object_ids = [var.user_object_id]
+  subnet_id                     = module.vnet_app[0].subnets["snet-app-01"].id
+  tags                          = var.tags
+  unique_seed                   = module.naming.unique-seed
+
+  depends_on = [module.vnet_app[0].azure_files_config_vm_extension_id] # Ensure that Azure Files is configured
+}
 #endregion

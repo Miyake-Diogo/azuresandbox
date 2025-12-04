@@ -221,6 +221,9 @@ function Move-SqlDatabase {
 
     Stop-SqlServer
 
+    Write-Log "Sleeping for 60 seconds to wait for SQL Server to shutdown completely..."
+    Start-Sleep -Seconds 60
+    
     Write-Log "Move-SqlDatabase: Moving '$Name' database data file from '$currentDataFilePath' to '$newDataFilePath'..."
     try {
         Move-Item -Path $currentDataFilePath -Destination $newDataFilePath -Force -ErrorAction Stop
