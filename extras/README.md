@@ -29,6 +29,7 @@ This section describes additional Terraform modules that can be added to Azure S
 * [vm-devops-win](./modules/vm-devops-win/) implements a collection of identical Windows developer VMs.
 * [vnet-onprem](./modules/vnet-onprem/) simulates connectivity to an on-premises network using a site-to-site VPN connection and Azure DNS private resolver.
 * [petstore](./modules/petstore/) deploys a sample RESTful API application using Azure Container Apps.
+* [avd](./modules/avd/) deploys an Azure Virtual Desktop test environment with support for personal desktops and RemoteApp streaming.
 
 ## Demo videos
 
