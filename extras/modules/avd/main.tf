@@ -3,6 +3,13 @@ data "azurerm_client_config" "current" {}
 #endregion
 
 #region common
+resource "azurerm_virtual_desktop_workspace" "this" {
+  name                = "${module.naming.virtual_desktop_workspace.name_unique}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  friendly_name       = "AVD Quickstart Workspace"
+}
+
 resource "azurerm_role_assignment" "vm_users" {
   for_each             = toset(var.security_principal_object_ids)
   scope                = var.resource_group_id
@@ -12,25 +19,18 @@ resource "azurerm_role_assignment" "vm_users" {
 #endregion
 
 #region personal
-resource "azurerm_virtual_desktop_workspace" "personal" {
-  name                = "${module.naming.virtual_desktop_workspace.name_unique}-personal"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  friendly_name       = "Personal Workspace"
-}
-
 resource "azurerm_virtual_desktop_application_group" "personal" {
   name                = "${module.naming.virtual_desktop_application_group.name_unique}-personal"
   location            = var.location
   resource_group_name = var.resource_group_name
   type                = "Desktop"
   host_pool_id        = azurerm_virtual_desktop_host_pool.personal.id
-  friendly_name       = "Default Desktop"
-  description         = "Desktop Application Group created through the QuickStart"
+  friendly_name       = "Personal Desktop"
+  description         = "Personal Desktop Application Group created through the AVD Quickstart"
 }
 
 resource "azurerm_virtual_desktop_workspace_application_group_association" "personal" {
-  workspace_id         = azurerm_virtual_desktop_workspace.personal.id
+  workspace_id         = azurerm_virtual_desktop_workspace.this.id
   application_group_id = azurerm_virtual_desktop_application_group.personal.id
 }
 
@@ -61,13 +61,6 @@ resource "azurerm_virtual_desktop_host_pool_registration_info" "personal" {
 #endregion
 
 #region remoteapp
-resource "azurerm_virtual_desktop_workspace" "remoteapp" {
-  name                = "${module.naming.virtual_desktop_workspace.name_unique}-remoteapp"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  friendly_name       = "RemoteApp Workspace"
-}
-
 resource "azurerm_virtual_desktop_application_group" "remoteapp" {
   name                = "${module.naming.virtual_desktop_application_group.name_unique}-remoteapp"
   location            = var.location
@@ -79,7 +72,7 @@ resource "azurerm_virtual_desktop_application_group" "remoteapp" {
 }
 
 resource "azurerm_virtual_desktop_workspace_application_group_association" "remoteapp" {
-  workspace_id         = azurerm_virtual_desktop_workspace.remoteapp.id
+  workspace_id         = azurerm_virtual_desktop_workspace.this.id
   application_group_id = azurerm_virtual_desktop_application_group.remoteapp.id
 }
 

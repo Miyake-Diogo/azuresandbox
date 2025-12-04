@@ -40,16 +40,6 @@ variable "location" {
   }
 }
 
-variable "resource_group_name" {
-  type        = string
-  description = "Name of the resource group"
-
-  validation {
-    condition     = can(regex("^[a-zA-Z0-9._()-]{1,90}$", var.resource_group_name))
-    error_message = "Must conform to Azure resource group naming requirements: it can only contain alphanumeric characters, periods (.), underscores (_), parentheses (()), and hyphens (-), and must be between 1 and 90 characters long."
-  }
-}
-
 variable "resource_group_id" {
   type        = string
   description = "ID of the resource group"
@@ -60,9 +50,19 @@ variable "resource_group_id" {
   }
 }
 
+variable "resource_group_name" {
+  type        = string
+  description = "Name of the resource group"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._()-]{1,90}$", var.resource_group_name))
+    error_message = "Must conform to Azure resource group naming requirements: it can only contain alphanumeric characters, periods (.), underscores (_), parentheses (()), and hyphens (-), and must be between 1 and 90 characters long."
+  }
+}
+
 variable "security_principal_object_ids" {
   type        = list(string)
-  description = "The object IDs of the Security Principals to assign to the AVD Application Group"
+  description = "The object IDs of the Security Principals to assign to AVD Application groups"
 
   validation {
     condition = alltrue([
