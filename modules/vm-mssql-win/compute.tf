@@ -10,6 +10,8 @@ resource "azurerm_windows_virtual_machine" "this" {
   patch_assessment_mode      = "AutomaticByPlatform"
   provision_vm_agent         = true
   encryption_at_host_enabled = true
+  
+  depends_on                 = [null_resource.this]
 
   os_disk {
     caching              = "ReadWrite"

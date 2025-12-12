@@ -193,17 +193,6 @@ function Register-DscNode {
 #region main
 Write-Log "Running '$PSCommandPath'..."
 
-Write-Log "Running '$PSScriptRoot/Set-AutomationAccountConfiguration.ps1'..."
-
-.$PSScriptRoot/Set-AutomationAccountConfiguration.ps1 `
-    -TenantId $TenantId `
-    -SubscriptionId $SubscriptionId `
-    -ResourceGroupName $ResourceGroupName `
-    -AutomationAccountName $AutomationAccountName `
-    -VmMssqlWinName  $VirtualMachineName `
-    -AppId $AppId `
-    -AppSecret $AppSecret
-
 Write-Log "Logging into Azure using service principal id '$AppId'..."
 
 $AppSecretSecure = ConvertTo-SecureString $AppSecret -AsPlainText -Force
